@@ -18,7 +18,7 @@ Each phase ends with a **manual test gate**. Do not start the next phase until e
 |---|---|---|
 | Language | Python 3.12, `uv` or `pip` + `pyproject.toml` | Local |
 | Ingestion | `cdsapi`, `requests`, `xarray` + `cfgrib`/`netCDF4`, `pyarrow` | Local (Docker) |
-| Data lake | **MinIO** (S3 API), buckets `raw/`, `staged/`, Parquet partitioned by date | Local (Docker) |
+| Data lake | **RustFS** (S3-compatible), buckets `raw/`, `staged/`, Parquet partitioned by date | Local (Docker) |
 | Warehouse | **Postgres 16 + PostGIS** — schemas `raw`, `staging`, `marts` | Local (Docker) |
 | Transform + tests | dbt-core + **dbt-postgres** | Local |
 | Orchestration | Apache Airflow 3 (Docker Compose) | Local only (too RAM-heavy for Railway) |
@@ -33,7 +33,7 @@ Each phase ends with a **manual test gate**. Do not start the next phase until e
 
 ```text
 CDS (ERA5) ─┐
-ADS (CAMS) ─┼─► extract (Python) ─► MinIO raw/ ─► staged Parquet ─► Postgres raw ─► dbt ─► marts
+ADS (CAMS) ─┼─► extract (Python) ─► RustFS raw/ ─► staged Parquet ─► Postgres raw ─► dbt ─► marts
 Open-Meteo ─┘                                                                         │
                                                               pvlib (solar, soiling) ◄┘
                                                                          │
@@ -45,7 +45,7 @@ PVGIS / NASA POWER: validation only, never inputs.
 
 - Local Docker: free.
 - Railway Hobby plan: about USD 5/month base, billed on RAM/CPU/volume. Set a **usage limit in the Railway dashboard** on day one (Terraform does not manage billing limits).
-- Keep hourly data in MinIO only; load **daily** aggregates into Postgres.
+- Keep hourly data in the lake (RustFS) only; load **daily** aggregates into Postgres.
 
 ---
 
@@ -65,15 +65,18 @@ Gate:
 ## Phase 1 — Local infrastructure (Docker Compose)
 
 Build:
-- [ ] `docker-compose.yml`: `postgis/postgis:16-3.4`, `minio/minio`, MinIO bucket init
-- [ ] SQL init script: schemas `raw`, `staging`, `marts`; `CREATE EXTENSION postgis`
-- [ ] `locintel.config` reads `.env`
+- [x] `docker-compose.yml`: `postgis/postgis:16-3.7`, `rustfs/rustfs:1.0.4`, one-shot bucket init
+- [x] SQL init script: schemas `raw`, `staging`, `marts`; `CREATE EXTENSION postgis`
+- [x] `locintel.config` reads `.env` (pydantic-settings, secrets hidden)
+- [x] `python -m locintel.healthcheck` checks PostGIS, schemas and buckets
 
 Gate:
-- [ ] `docker compose up -d` → all containers healthy
-- [ ] `psql` → `SELECT postgis_version();` returns a version
-- [ ] MinIO console (`localhost:9001`) shows buckets `raw` and `staged`
-- [ ] `docker compose down && up` keeps data (volumes work)
+- [ ] `docker compose up -d --wait` → `postgres` and `rustfs` healthy, `rustfs-init` exited (0)
+- [ ] `uv run python -m locintel.healthcheck` prints `OK`
+- [ ] RustFS console (`http://localhost:9001/rustfs/console/`) shows buckets `raw` and `staged`
+- [ ] `docker compose down && docker compose up -d --wait` keeps data (volumes work)
+
+> MinIO was dropped: its free Docker images were withdrawn in late 2025. RustFS is S3-compatible, so the Python code (boto3) is the same.
 
 ## Phase 2 — Grid
 
@@ -104,15 +107,15 @@ Gate:
 - [ ] Alexandria on 2025-07-15: Tmax 28–35 °C, GHI 7–8.5 kWh/m², rain ≈ 0
 - [ ] Riyadh on the same day: Tmax > 40 °C
 
-## Phase 4 — Load: MinIO → Postgres
+## Phase 4 — Load: lake (RustFS) → Postgres
 
 Build:
-- [ ] `locintel/load/lake.py`: upload raw file + Parquet to MinIO (`raw/era5/date=YYYY-MM-DD/`)
+- [ ] `locintel/load/lake.py`: upload raw file + Parquet to RustFS (`raw/era5/date=YYYY-MM-DD/`)
 - [ ] `locintel/load/warehouse.py`: Parquet → `raw.era5_daily` (idempotent: delete-then-insert per date)
 - [ ] Table partitioned by month (declarative partitioning) or indexed on `(date, cell_id)`
 
 Gate:
-- [ ] Files visible in MinIO console under the right prefix
+- [ ] Files visible in RustFS console under the right prefix
 - [ ] `SELECT COUNT(*) FROM raw.era5_daily WHERE date = '2025-07-15'` = cell count
 - [ ] Running the load twice gives the same count (no duplicates)
 
@@ -230,18 +233,18 @@ Gate: forecast skill score recorded in README.
 ```text
 location-intelligence/
 ├── README.md
-├── docker-compose.yml        # Postgres+PostGIS, MinIO, Airflow
+├── docker-compose.yml        # Postgres+PostGIS, RustFS, Airflow
 ├── .env.example
 ├── pyproject.toml
 ├── .github/workflows/ci.yml
 ├── infra/                    # Terraform: Railway
-├── docker/                   # init SQL, Dockerfiles
+├── docker/                   # Postgres init SQL, Dockerfiles
 ├── dags/
 ├── src/locintel/
 │   ├── config.py
 │   ├── grid.py
 │   ├── extract/              # era5, cams_eac4, openmeteo_aq
-│   ├── load/                 # lake (MinIO), warehouse (Postgres)
+│   ├── load/                 # lake (RustFS/S3), warehouse (Postgres)
 │   └── models/               # solar, soiling
 ├── dbt/models/{staging,intermediate,marts}/
 ├── app/                      # Streamlit + LLM

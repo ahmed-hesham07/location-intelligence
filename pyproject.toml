@@ -5,7 +5,11 @@ description = "Daily batch pipeline: ERA5 + CAMS -> climate, solar and dust indi
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "boto3>=1.43.126",
+    "psycopg[binary]>=3.3.8",
+    "pydantic-settings>=2.16.2",
+]
 
 [dependency-groups]
 dev = [

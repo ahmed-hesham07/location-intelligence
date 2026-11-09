@@ -1,0 +1,71 @@
+# Local stack: Postgres + PostGIS (warehouse) and RustFS (S3-compatible lake).
+# Reads variables from .env in this folder (copy .env.example first).
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.7
+    container_name: locintel-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-locintel}
+      POSTGRES_USER: ${POSTGRES_USER:-locintel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  rustfs:
+    image: rustfs/rustfs:1.0.4
+    container_name: locintel-rustfs
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console: http://localhost:9001/rustfs/console/
+    volumes:
+      - lakedata:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # One-shot job: create the lake buckets, then exit.
+  rustfs-init:
+    image: rustfs/rustfs:1.0.4
+    container_name: locintel-rustfs-init
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      BUCKETS: ${S3_BUCKETS:-raw staged}
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        for b in $$BUCKETS; do
+          code=$$(curl -s -o /dev/null -w '%{http_code}' \
+            --aws-sigv4 "aws:amz:$$S3_REGION:s3" --user "$$S3_ACCESS_KEY:$$S3_SECRET_KEY" \
+            -X PUT "http://rustfs:9000/$$b")
+          case "$$code" in
+            200|409) echo "bucket $$b ok ($$code)" ;;
+            *) echo "bucket $$b failed ($$code)"; exit 1 ;;
+          esac
+        done
+    restart: "no"
+
+volumes:
+  pgdata:
+  lakedata:
