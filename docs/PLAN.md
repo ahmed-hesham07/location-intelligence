@@ -58,9 +58,9 @@ Build:
 - [x] One trivial test
 
 Gate:
-- [ ] `ruff check .` passes
-- [ ] `pytest` passes
-- [ ] `.env` is in `.gitignore`
+- [x] `ruff check .` passes
+- [x] `pytest` passes
+- [x] `.env` is in `.gitignore`
 
 ## Phase 1 — Local infrastructure (Docker Compose)
 
@@ -72,11 +72,11 @@ Build:
 - [x] `python -m locintel.healthcheck` checks PostGIS, schemas and buckets
 
 Gate:
-- [ ] `docker compose up -d --wait` exits 0; `postgres` and `rustfs` healthy
-- [ ] `uv run python -m locintel.load.lake init` → both buckets `created` (second run: `exists`)
-- [ ] `uv run python -m locintel.healthcheck` prints `OK`
+- [x] `docker compose up -d --wait` exits 0; `postgres` and `rustfs` healthy
+- [x] `uv run python -m locintel.load.lake init` → both buckets `created` (second run: `exists`)
+- [x] `uv run python -m locintel.healthcheck` prints `OK`
 - [ ] RustFS console (`http://localhost:9001/rustfs/console/`) shows buckets `raw` and `staged`
-- [ ] `docker compose down && docker compose up -d --wait` keeps data (volumes work)
+- [x] `docker compose down && docker compose up -d --wait` keeps data (volumes work)
 
 > MinIO was dropped: its free Docker images were withdrawn in late 2025. RustFS is S3-compatible, so the Python code (boto3) is the same.
 
