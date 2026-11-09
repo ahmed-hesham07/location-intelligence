@@ -4,13 +4,23 @@ A daily batch pipeline that turns weather and air-quality data into precomputed 
 
 Each phase ends with a **manual test gate**. Do not start the next phase until every box in the gate is ticked.
 
+## Branches
+
+| Branch | Purpose | Who merges into it |
+|---|---|---|
+| `main` | Verified releases only: automated + manual tests passed | Owner only |
+| `dev` | **v1** work: 0.25° grid, ERA5 + CAMS, Phases 0–13 in this file | Day-to-day |
+| `dev-v2` | **v2** work: city-level layer — see `docs/PLAN_V2.md` on that branch | Day-to-day, rebased on `dev` |
+
+v1 comes first. `dev-v2` holds the v2 plan now; v2 code starts only after v1 Phase 11 is done (Rule 5).
+
 ## Rules
 
 1. Every step is a plain Python CLI first (`python -m locintel...`). Airflow wraps it only after it works by hand.
 2. Users read **precomputed** marts only. No live data calls per question.
 3. Every number the LLM says must exist in the cell's JSON. The validator rejects anything else.
 4. No Earth Engine in v1.
-5. Nothing new until Phase 11 is done.
+5. Nothing new until Phase 11 is done. v2 ideas go into `docs/PLAN_V2.md` on `dev-v2`, not into v1.
 
 ## Stack
 
