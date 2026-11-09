@@ -92,16 +92,21 @@ Gate:
 
 ## Phase 2 — Grid
 
+Rule (decided): cell centres on the ERA5 0.25° points; keep a cell when the 7 countries cover **≥ 25%** of it; country = largest share. Finer city-level cells are v2 (`dev-v2`).
+
 Build:
-- [ ] `locintel/grid.py`: 0.25° cells aligned to ERA5 (cell centres on .00/.25/.50/.75), clipped to EGY, SAU, ARE, QAT, KWT, BHR, OMN (geoBoundaries ADM0)
-- [ ] Columns: `cell_id`, `country_iso3`, `lat`, `lon`, `geom` (polygon, EPSG:4326)
-- [ ] CLI: `python -m locintel.grid build` → loads `raw.cells`
-- [ ] pytest: alignment, no duplicate `cell_id`, every cell has a country
+- [x] `locintel/grid.py`: 0.25° cells aligned to ERA5, geoBoundaries gbOpen ADM0 for EGY, SAU, ARE, QAT, KWT, BHR, OMN (cached in `data/ref/boundaries/`)
+- [x] Land share computed in an equal-area projection (EPSG:6933); overlapping claims not double-counted
+- [x] Columns: `cell_id` (stable integer, row from 90°N × 1440 + column from 180°W), `country_iso3`, `lat`, `lon`, `land_frac`, `geom`
+- [x] CLI: `python -m locintel.grid build` → `data/ref/cells.parquet`, `data/ref/cells.png`, table `raw.cells`; `lookup --lon --lat`
+- [x] pytest: id round-trip, alignment, 25% threshold, largest-share country, no double counting
 
 Gate:
-- [ ] Cell count in the expected range (~6,000) — record the exact number
-- [ ] Plot (QGIS or a geopandas PNG): no sea cells, no holes, Bahrain present
-- [ ] Alexandria `[29.9187, 31.2001]` falls in exactly one cell
+- [ ] `python -m locintel.grid build` prints **4,906** cells (ARE 106, BHR 2, EGY 1516, KWT 27, OMN 445, QAT 21, SAU 2789) and ~0.001% land outside the box
+- [ ] `data/ref/cells.png`: no open-sea cells, no holes inland, Bahrain present (open it from `\\wsl$\Ubuntu\home\ahmed\code\location-intelligence\data\ref`)
+- [ ] `psql`: `SELECT count(*), count(DISTINCT cell_id) FROM raw.cells` → 4906, 4906
+- [ ] Alexandria `[29.9187, 31.2001]` falls in exactly one cell (339240, EGY)
+- [ ] Running `build` twice leaves 4,906 rows (idempotent)
 
 ## Phase 3 — ERA5 extract (one day, local file)
 
@@ -115,7 +120,7 @@ Build:
 
 Gate:
 - [ ] `python -m locintel.extract.era5 --date 2025-07-15` produces one Parquet file
-- [ ] Row count = cells × 1
+- [ ] Row count = 4,906 (cells × 1 day)
 - [ ] Alexandria on 2025-07-15: Tmax 28–35 °C, GHI 7–8.5 kWh/m², rain ≈ 0
 - [ ] Riyadh on the same day: Tmax > 40 °C
 

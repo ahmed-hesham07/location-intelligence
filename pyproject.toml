@@ -7,12 +7,18 @@ license = "MIT"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "boto3>=1.43.126",
+    "geopandas>=1.2.0",
     "psycopg[binary]>=3.3.8",
+    "pyarrow>=26.0.1",
     "pydantic-settings>=2.16.2",
+    "pyproj>=3.8.0",
+    "requests>=2.34.2",
+    "shapely>=2.2.0",
 ]
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.11.2",
     "pytest>=8",
     "ruff>=0.6",
 ]

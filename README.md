@@ -35,3 +35,12 @@ uv run python -m locintel.healthcheck      # prints OK
 | RustFS console | `http://localhost:9001/rustfs/console/` (log in with the S3 keys) |
 
 `docker compose down` keeps data; `docker compose down -v` deletes it.
+
+## Grid (Phase 2)
+
+```bash
+uv run python -m locintel.grid build    # ~2–3 min: downloads boundaries once, writes data/ref/, loads raw.cells
+uv run python -m locintel.grid lookup --lon 29.9187 --lat 31.2001
+```
+
+4,906 cells of 0.25° (one per ERA5 point), kept where the 7 countries cover ≥ 25% of the cell. Boundaries: [geoBoundaries](https://www.geoboundaries.org/) gbOpen ADM0 (CC BY 4.0).
