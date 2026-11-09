@@ -5,11 +5,10 @@ Exits 0 when Postgres has PostGIS and the three schemas, and every lake bucket e
 
 import sys
 
-import boto3
 import psycopg
-from botocore.config import Config
 
 from locintel.config import Settings, get_settings
+from locintel.load.lake import s3_client
 
 REQUIRED_SCHEMAS = {"raw", "staging", "marts"}
 
@@ -32,20 +31,13 @@ def check_postgres(settings: Settings) -> list[str]:
 
 
 def check_lake(settings: Settings) -> list[str]:
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=settings.s3_endpoint,
-        region_name=settings.s3_region,
-        aws_access_key_id=settings.s3_access_key.get_secret_value(),
-        aws_secret_access_key=settings.s3_secret_key.get_secret_value(),
-        config=Config(
-            s3={"addressing_style": "path"}, connect_timeout=5, retries={"max_attempts": 2}
-        ),
-    )
+    s3 = s3_client(settings)
     found = {b["Name"] for b in s3.list_buckets().get("Buckets", [])}
     print(f"lake: buckets {sorted(found)}")
     missing = set(settings.bucket_names) - found
-    return [f"missing buckets: {sorted(missing)}"] if missing else []
+    if missing:
+        return [f"missing buckets: {sorted(missing)} (run: python -m locintel.load.lake init)"]
+    return []
 
 
 def main() -> int:

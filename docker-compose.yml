@@ -39,33 +39,6 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # One-shot job: create the lake buckets, then exit.
-  rustfs-init:
-    image: rustfs/rustfs:1.0.4
-    container_name: locintel-rustfs-init
-    depends_on:
-      rustfs:
-        condition: service_healthy
-    environment:
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      BUCKETS: ${S3_BUCKETS:-raw staged}
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        set -e
-        for b in $$BUCKETS; do
-          code=$$(curl -s -o /dev/null -w '%{http_code}' \
-            --aws-sigv4 "aws:amz:$$S3_REGION:s3" --user "$$S3_ACCESS_KEY:$$S3_SECRET_KEY" \
-            -X PUT "http://rustfs:9000/$$b")
-          case "$$code" in
-            200|409) echo "bucket $$b ok ($$code)" ;;
-            *) echo "bucket $$b failed ($$code)"; exit 1 ;;
-          esac
-        done
-    restart: "no"
-
 volumes:
   pgdata:
   lakedata:

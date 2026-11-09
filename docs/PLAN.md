@@ -65,13 +65,15 @@ Gate:
 ## Phase 1 — Local infrastructure (Docker Compose)
 
 Build:
-- [x] `docker-compose.yml`: `postgis/postgis:16-3.7`, `rustfs/rustfs:1.0.4`, one-shot bucket init
+- [x] `docker-compose.yml`: `postgis/postgis:16-3.7`, `rustfs/rustfs:1.0.4`
+- [x] `python -m locintel.load.lake init` creates buckets `raw`, `staged` (idempotent)
 - [x] SQL init script: schemas `raw`, `staging`, `marts`; `CREATE EXTENSION postgis`
 - [x] `locintel.config` reads `.env` (pydantic-settings, secrets hidden)
 - [x] `python -m locintel.healthcheck` checks PostGIS, schemas and buckets
 
 Gate:
-- [ ] `docker compose up -d --wait` → `postgres` and `rustfs` healthy, `rustfs-init` exited (0)
+- [ ] `docker compose up -d --wait` exits 0; `postgres` and `rustfs` healthy
+- [ ] `uv run python -m locintel.load.lake init` → both buckets `created` (second run: `exists`)
 - [ ] `uv run python -m locintel.healthcheck` prints `OK`
 - [ ] RustFS console (`http://localhost:9001/rustfs/console/`) shows buckets `raw` and `staged`
 - [ ] `docker compose down && docker compose up -d --wait` keeps data (volumes work)

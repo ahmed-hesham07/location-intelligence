@@ -24,7 +24,8 @@ Postgres 16 + PostGIS (warehouse) and RustFS (S3-compatible lake) in Docker.
 ```bash
 cp .env.example .env            # set POSTGRES_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY
 docker compose up -d --wait
-uv run python -m locintel.healthcheck   # prints OK
+uv run python -m locintel.load.lake init   # creates buckets raw, staged
+uv run python -m locintel.healthcheck      # prints OK
 ```
 
 | Service | Address |
