@@ -52,10 +52,10 @@ PVGIS / NASA POWER: validation only, never inputs.
 ## Phase 0 — Repo skeleton
 
 Build:
-- [ ] `pyproject.toml` (package `locintel`, ruff, pytest config)
-- [ ] Folder layout (see bottom of this file)
-- [ ] `.env.example` with every variable name, no values
-- [ ] One trivial test
+- [x] `pyproject.toml` (package `locintel`, ruff, pytest config)
+- [x] Folder layout (see bottom of this file)
+- [x] `.env.example` with every variable name, no values
+- [x] One trivial test
 
 Gate:
 - [ ] `ruff check .` passes
